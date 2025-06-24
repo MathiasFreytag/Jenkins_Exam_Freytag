@@ -78,7 +78,7 @@ def deployToEnv(envName) {
 
             for (svc in services) {
                 def image = "docker.io/${DOCKER_HUB_USR}/${svc}:latest"
-                def chartPath = "./charts/${svc}"
+                def chartPath = "./charts"  // Gemeinsamer Chart für beide Services
 
                 sh """
                     echo "Deploying ${svc} to ${envName}..."

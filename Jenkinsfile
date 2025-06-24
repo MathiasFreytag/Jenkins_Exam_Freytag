@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB = credentials('dockerhub-credentials') // erzeugt: DOCKER_HUB_USR + DOCKER_HUB_PSW
+        DOCKER_HUB = credentials('dockerhub-credentials') // erzeugt DOCKER_HUB_USR + DOCKER_HUB_PSW
     }
 
     stages {
@@ -46,17 +46,41 @@ pipeline {
             }
         }
 
-        stage('Deploy to prod (if master)') {
+        stage('Deploy to prod') {
+            when {
+                expression {
+                    return getGitBranch() == "master"
+                }
+            }
             steps {
+                input message: 'Deploy to production?', ok: 'Yes, deploy'
                 script {
-                    def branch = env.GIT_BRANCH ?: sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
-                    echo "Detected Jenkins branch: ${branch}"
+                    withCredentials([file(credentialsId: 'config', variable: 'KUBECONFIG_FILE')]) {
+                        def services = ['cast-service', 'movie-service']
+                        def ports = ['cast-service': 30007, 'movie-service': 30008]
 
-                    if (branch.contains('master')) {
-                        input message: 'Deploy to production?', ok: 'Yes, deploy'
-                        deployToEnv('prod')()
-                    } else {
-                        echo "Skipping production deployment – not on master branch."
+                        sh '''
+                            mkdir -p ~/.kube
+                            cp "$KUBECONFIG_FILE" ~/.kube/config
+                            export KUBECONFIG=~/.kube/config
+                        '''
+
+                        for (svc in services) {
+                            def image = "docker.io/${DOCKER_HUB_USR}/${svc}:latest"
+                            def chartPath = "./charts"
+                            def nodePort = ports[svc]
+
+                            sh """
+                                echo "Deploying ${svc} to prod..."
+                                helm upgrade --install ${svc} ${chartPath} \
+                                  --namespace prod \
+                                  --create-namespace \
+                                  --set image.repository=${image} \
+                                  --set image.tag=latest \
+                                  --set service.type=NodePort \
+                                  --set service.nodePort=${nodePort}
+                            """
+                        }
                     }
                 }
             }
@@ -67,13 +91,17 @@ pipeline {
 def deployToEnv(envName) {
     return {
         script {
-            def services = ['cast-service', 'movie-service']
-
             withCredentials([file(credentialsId: 'config', variable: 'KUBECONFIG_FILE')]) {
-                env.KUBECONFIG = "${KUBECONFIG_FILE}"
+                def services = ['cast-service', 'movie-service']
+
+                sh '''
+                    mkdir -p ~/.kube
+                    cp "$KUBECONFIG_FILE" ~/.kube/config
+                    export KUBECONFIG=~/.kube/config
+                '''
 
                 for (svc in services) {
-                    def image = "docker.io/${env.DOCKER_HUB_USR}/${svc}:latest"
+                    def image = "docker.io/${DOCKER_HUB_USR}/${svc}:latest"
                     def chartPath = "./charts"
 
                     sh """
@@ -82,10 +110,17 @@ def deployToEnv(envName) {
                           --namespace ${envName} \
                           --create-namespace \
                           --set image.repository=${image} \
-                          --set image.tag=latest
+                          --set image.tag=latest \
+                          --set service.type=ClusterIP
                     """
                 }
             }
         }
     }
+}
+
+def getGitBranch() {
+    def branch = sh(script: 'git rev-parse --abbrev-ref HEAD || echo HEAD', returnStdout: true).trim()
+    echo "Detected Git branch: ${branch}"
+    return branch ==~ /origin\/(master|main)/ ? "master" : branch
 }

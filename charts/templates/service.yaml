@@ -12,6 +12,9 @@ spec:
     - protocol: TCP
       port: {{ .Values.service.port }}
       targetPort: {{ .Values.service.targetPort }}
-      {{- if and (eq .Values.service.type "NodePort") (.Values.service.nodePort) }}
-      nodePort: {{ .Values.service.nodePort }}
+      {{- if eq .Values.service.type "NodePort" }}
+      nodePort: {{- if eq .Release.Name "cast-service" }}30007
+                {{- else if eq .Release.Name "movie-service" }}30008
+                {{- end }}
       {{- end }}
+

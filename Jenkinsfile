@@ -49,7 +49,9 @@ pipeline {
 
         stage('Manual Approval for Prod') {
             when {
-                branch 'master'
+                expression {
+			return env.BRANCH_NAME == 'master'
+		}
             }
             steps {
                 input message: 'Deploy to production?', ok: 'Yes, deploy'
@@ -58,7 +60,9 @@ pipeline {
 
         stage('Deploy to prod') {
             when {
-                branch 'master'
+                expression {
+			return env.BRANCH_NAME == 'master'
+		}
             }
             steps {
                 deployToEnv('prod')

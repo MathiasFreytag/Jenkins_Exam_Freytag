@@ -1,9 +1,9 @@
 replicaCount: 3
 
 image:
-  repository: mathiasfreytag/fastapiapp
+  repository: ""
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: ""
 
 imagePullSecrets:
   - name: "regcred"

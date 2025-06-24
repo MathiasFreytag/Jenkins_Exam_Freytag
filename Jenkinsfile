@@ -46,53 +46,36 @@ pipeline {
             }
         }
 
-        stage('Deploy to prod') {
+        stage('Manual Approval') {
             when {
                 expression {
-                    return getGitBranch() == "master"
+                    return isMasterBranch()
                 }
             }
             steps {
                 input message: 'Deploy to production?', ok: 'Yes, deploy'
-                script {
-                    withCredentials([file(credentialsId: 'config', variable: 'KUBECONFIG_FILE')]) {
-                        def services = ['cast-service', 'movie-service']
-                        def ports = ['cast-service': 30007, 'movie-service': 30008]
+            }
+        }
 
-                        sh '''
-                            mkdir -p ~/.kube
-                            cp "$KUBECONFIG_FILE" ~/.kube/config
-                            export KUBECONFIG=~/.kube/config
-                        '''
-
-                        for (svc in services) {
-                            def image = "docker.io/${DOCKER_HUB_USR}/${svc}:latest"
-                            def chartPath = "./charts"
-                            def nodePort = ports[svc]
-
-                            sh """
-                                echo "Deploying ${svc} to prod..."
-                                helm upgrade --install ${svc} ${chartPath} \
-                                  --namespace prod \
-                                  --create-namespace \
-                                  --set image.repository=${image} \
-                                  --set image.tag=latest \
-                                  --set service.type=NodePort \
-                                  --set service.nodePort=${nodePort}
-                            """
-                        }
-                    }
+        stage('Deploy to prod') {
+            when {
+                expression {
+                    return isMasterBranch()
                 }
+            }
+            steps {
+                deployToEnv('prod', true)
             }
         }
     }
 }
 
-def deployToEnv(envName) {
+def deployToEnv(envName, isProd = false) {
     return {
         script {
             withCredentials([file(credentialsId: 'config', variable: 'KUBECONFIG_FILE')]) {
                 def services = ['cast-service', 'movie-service']
+                def ports = ['cast-service': 30007, 'movie-service': 30008]
 
                 sh '''
                     mkdir -p ~/.kube
@@ -103,6 +86,8 @@ def deployToEnv(envName) {
                 for (svc in services) {
                     def image = "docker.io/${DOCKER_HUB_USR}/${svc}:latest"
                     def chartPath = "./charts"
+                    def serviceType = isProd ? "NodePort" : "ClusterIP"
+                    def portSetting = isProd ? "--set service.nodePort=${ports[svc]}" : ""
 
                     sh """
                         echo "Deploying ${svc} to ${envName}..."
@@ -111,7 +96,8 @@ def deployToEnv(envName) {
                           --create-namespace \
                           --set image.repository=${image} \
                           --set image.tag=latest \
-                          --set service.type=ClusterIP
+                          --set service.type=${serviceType} \
+                          ${portSetting}
                     """
                 }
             }
@@ -119,8 +105,8 @@ def deployToEnv(envName) {
     }
 }
 
-def getGitBranch() {
+def isMasterBranch() {
     def branch = sh(script: 'git rev-parse --abbrev-ref HEAD || echo HEAD', returnStdout: true).trim()
     echo "Detected Git branch: ${branch}"
-    return branch ==~ /origin\/(master|main)/ ? "master" : branch
+    return branch == 'master' || branch == 'origin/master'
 }

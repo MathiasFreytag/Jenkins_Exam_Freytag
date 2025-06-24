@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB = credentials('dockerhub-credentials') // erzeugt DOCKER_HUB_USR + DOCKER_HUB_PSW
+        DOCKER_HUB = credentials('dockerhub-credentials') // liefert: DOCKER_HUB_USR + DOCKER_HUB_PSW
+        KUBECONFIG_FILE = credentials('config')           // Kubeconfig als Datei
     }
 
     stages {
@@ -30,26 +31,28 @@ pipeline {
 
         stage('Deploy to dev') {
             steps {
-                deployToEnv('dev')
+                deployToEnv('dev', 'ClusterIP')
             }
         }
 
         stage('Deploy to qa') {
             steps {
-                deployToEnv('qa')
+                deployToEnv('qa', 'ClusterIP')
             }
         }
 
         stage('Deploy to staging') {
             steps {
-                deployToEnv('staging')
+                deployToEnv('staging', 'ClusterIP')
             }
         }
 
         stage('Manual Approval') {
             when {
                 expression {
-                    return isMasterBranch()
+                    def branch = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                    echo "Detected Git branch: ${branch}"
+                    return branch == 'master' || branch == 'origin/master'
                 }
             }
             steps {
@@ -60,53 +63,48 @@ pipeline {
         stage('Deploy to prod') {
             when {
                 expression {
-                    return isMasterBranch()
+                    def branch = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                    return branch == 'master' || branch == 'origin/master'
                 }
             }
             steps {
-                deployToEnv('prod', true)
+                deployToEnv('prod', 'NodePort')
             }
         }
     }
 }
 
-def deployToEnv(envName, isProd = false) {
+def deployToEnv(envName, serviceType) {
     return {
-        script {
-            withCredentials([file(credentialsId: 'config', variable: 'KUBECONFIG_FILE')]) {
+        withCredentials([file(credentialsId: 'config', variable: 'KUBECONFIG_FILE')]) {
+            script {
                 def services = ['cast-service', 'movie-service']
-                def ports = ['cast-service': 30007, 'movie-service': 30008]
+                def nodePorts = ['cast-service': 30007, 'movie-service': 30008]
 
                 sh '''
-                    mkdir -p ~/.kube
-                    cp "$KUBECONFIG_FILE" ~/.kube/config
-                    export KUBECONFIG=~/.kube/config
+                    mkdir -p /var/lib/jenkins/.kube
+                    cp "$KUBECONFIG_FILE" /var/lib/jenkins/.kube/config
+                    export KUBECONFIG=/var/lib/jenkins/.kube/config
                 '''
 
                 for (svc in services) {
                     def image = "docker.io/${DOCKER_HUB_USR}/${svc}:latest"
                     def chartPath = "./charts"
-                    def serviceType = isProd ? "NodePort" : "ClusterIP"
-                    def portSetting = isProd ? "--set service.nodePort=${ports[svc]}" : ""
+                    def nodePortFlag = serviceType == "NodePort" ? "--set service.nodePort=${nodePorts[svc]}" : ""
 
                     sh """
                         echo "Deploying ${svc} to ${envName}..."
+                        export KUBECONFIG=/var/lib/jenkins/.kube/config
                         helm upgrade --install ${svc} ${chartPath} \
                           --namespace ${envName} \
                           --create-namespace \
                           --set image.repository=${image} \
                           --set image.tag=latest \
                           --set service.type=${serviceType} \
-                          ${portSetting}
+                          ${nodePortFlag}
                     """
                 }
             }
         }
     }
-}
-
-def isMasterBranch() {
-    def branch = sh(script: 'git rev-parse --abbrev-ref HEAD || echo HEAD', returnStdout: true).trim()
-    echo "Detected Git branch: ${branch}"
-    return branch == 'master' || branch == 'origin/master'
 }

@@ -1,11 +1,13 @@
 replicaCount: 3
 
 image:
-  repository: ""        # Wird in Jenkins gesetzt
+  repository: mathiasfreytag/fastapiapp
   pullPolicy: IfNotPresent
-  tag: ""               # Wird in Jenkins gesetzt
+  tag: "latest"
 
-imagePullSecrets: []
+imagePullSecrets:
+  - name: "regcred"
+
 nameOverride: ""
 fullnameOverride: ""
 
@@ -15,14 +17,15 @@ serviceAccount:
   name: ""
 
 podAnnotations: {}
+
 podSecurityContext: {}
 securityContext: {}
 
 service:
-  type: ""              # Wichtig: leer, Jenkins setzt den Typ (z. B. NodePort)
+  type: ClusterIP  # Wird von Jenkinsfile für prod auf NodePort gesetzt
   port: 80
   targetPort: 8000
-  nodePort: 0           # Platzhalter, wird in Jenkins überschrieben
+  # nodePort wird nur per Jenkinsfile bei Bedarf gesetzt
 
 ingress:
   enabled: false
@@ -36,6 +39,7 @@ ingress:
   tls: []
 
 resources: {}
+
 autoscaling:
   enabled: false
   minReplicas: 1
@@ -43,5 +47,7 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
 
 nodeSelector: {}
+
 tolerations: []
+
 affinity: {}

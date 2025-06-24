@@ -31,19 +31,25 @@ pipeline {
 
         stage('Deploy to dev') {
             steps {
-                deployToEnv('dev', 'ClusterIP')
+                script {
+                    deployToEnv('dev', 'ClusterIP')()
+                }
             }
         }
 
         stage('Deploy to qa') {
             steps {
-                deployToEnv('qa', 'ClusterIP')
+                script {
+                    deployToEnv('qa', 'ClusterIP')()
+                }
             }
         }
 
         stage('Deploy to staging') {
             steps {
-                deployToEnv('staging', 'ClusterIP')
+                script {
+                    deployToEnv('staging', 'ClusterIP')()
+                }
             }
         }
 
@@ -66,7 +72,9 @@ pipeline {
                 }
             }
             steps {
-                deployToEnv('prod', 'NodePort')
+                script {
+                    deployToEnv('prod', 'NodePort')()
+                }
             }
         }
     }

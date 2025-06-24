@@ -50,7 +50,7 @@ pipeline {
         stage('Manual Approval for Prod') {
             when {
                 expression {
-			return env.BRANCH_NAME == 'master'
+			return env.BRANCH_NAME?.contains('master')
 		}
             }
             steps {
@@ -61,7 +61,7 @@ pipeline {
         stage('Deploy to prod') {
             when {
                 expression {
-			return env.BRANCH_NAME == 'master'
+			return env.BRANCH_NAME?.contains('master')
 		}
             }
             steps {

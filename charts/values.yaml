@@ -1,9 +1,9 @@
 replicaCount: 3
 
 image:
-  repository: ""
+  repository: "dummy"
   pullPolicy: IfNotPresent
-  tag: ""
+  tag: "dummy"
 
 imagePullSecrets:
   - name: "regcred"

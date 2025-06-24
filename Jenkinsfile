@@ -97,7 +97,6 @@ def deployToEnv(envName, serviceType) {
                           --namespace ${envName} \
                           --create-namespace \
                           --set image.repository=${imageRepo} \
-                          --set image.tag=latest \
                           --set service.type=${serviceType} \
                           ${nodePortFlag}
                     """

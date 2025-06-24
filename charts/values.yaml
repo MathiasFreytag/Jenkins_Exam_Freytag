@@ -3,7 +3,7 @@ replicaCount: 3
 image:
   repository: ""
   pullPolicy: IfNotPresent
-  tag: ""
+  tag: "latest"
 
 imagePullSecrets:
   - name: "regcred"

@@ -3,7 +3,6 @@ pipeline {
 
     environment {
         DOCKER_HUB = credentials('dockerhub-credentials') // erzeugt: DOCKER_HUB_USR + DOCKER_HUB_PSW
-        KUBECONFIG_FILE = credentials('config')  // Kubernetes config als Datei
     }
 
     stages {
@@ -50,10 +49,10 @@ pipeline {
         stage('Deploy to prod (if master)') {
             steps {
                 script {
-                    def branch = env.GIT_BRANCH
+                    def branch = env.GIT_BRANCH ?: sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
                     echo "Detected Jenkins branch: ${branch}"
 
-                    if (branch?.contains('master')) {
+                    if (branch.contains('master')) {
                         input message: 'Deploy to production?', ok: 'Yes, deploy'
                         deployToEnv('prod')()
                     } else {
@@ -69,27 +68,23 @@ def deployToEnv(envName) {
     return {
         script {
             def services = ['cast-service', 'movie-service']
-            def kubeConfigPath = "${env.WORKSPACE}/kubeconfig.yaml"
 
-            // Kubeconfig vorbereiten
-            sh """
-                cp "$KUBECONFIG_FILE" ${kubeConfigPath}
-                export KUBECONFIG=${kubeConfigPath}
-            """
+            withCredentials([file(credentialsId: 'config', variable: 'KUBECONFIG_FILE')]) {
+                env.KUBECONFIG = "${KUBECONFIG_FILE}"
 
-            for (svc in services) {
-                def image = "docker.io/${DOCKER_HUB_USR}/${svc}:latest"
-                def chartPath = "./charts"
+                for (svc in services) {
+                    def image = "docker.io/${env.DOCKER_HUB_USR}/${svc}:latest"
+                    def chartPath = "./charts"
 
-                sh """
-                    echo "Deploying ${svc} to ${envName}..."
-                    export KUBECONFIG=${kubeConfigPath}
-                    helm upgrade --install ${svc} ${chartPath} \
-                      --namespace ${envName} \
-                      --create-namespace \
-                      --set image.repository=${image} \
-                      --set image.tag=latest
-                """
+                    sh """
+                        echo "Deploying ${svc} to ${envName}..."
+                        helm upgrade --install ${svc} ${chartPath} \
+                          --namespace ${envName} \
+                          --create-namespace \
+                          --set image.repository=${image} \
+                          --set image.tag=latest
+                    """
+                }
             }
         }
     }

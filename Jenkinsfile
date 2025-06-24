@@ -69,19 +69,21 @@ def deployToEnv(envName) {
     return {
         script {
             def services = ['cast-service', 'movie-service']
+            def kubeConfigPath = "${env.WORKSPACE}/kubeconfig.yaml"
 
-            sh '''
-                mkdir -p ~/.kube
-                cp "$KUBECONFIG_FILE" ~/.kube/config
-                export KUBECONFIG=~/.kube/config
-            '''
+            // Kubeconfig vorbereiten
+            sh """
+                cp "$KUBECONFIG_FILE" ${kubeConfigPath}
+                export KUBECONFIG=${kubeConfigPath}
+            """
 
             for (svc in services) {
                 def image = "docker.io/${DOCKER_HUB_USR}/${svc}:latest"
-                def chartPath = "./charts"  // Gemeinsamer Chart für beide Services
+                def chartPath = "./charts"
 
                 sh """
                     echo "Deploying ${svc} to ${envName}..."
+                    export KUBECONFIG=${kubeConfigPath}
                     helm upgrade --install ${svc} ${chartPath} \
                       --namespace ${envName} \
                       --create-namespace \

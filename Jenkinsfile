@@ -87,6 +87,7 @@ def deployToEnv(envName, serviceType) {
 
                 for (svc in services) {
                     def imageRepo = "docker.io/${DOCKER_HUB_USR}/${svc}"
+                    def imageTag = "latest"
                     def chartPath = "./charts"
                     def nodePortFlag = serviceType == "NodePort" ? "--set service.nodePort=${nodePorts[svc]}" : ""
 
@@ -97,6 +98,7 @@ def deployToEnv(envName, serviceType) {
                           --namespace ${envName} \
                           --create-namespace \
                           --set image.repository=${imageRepo} \
+                          --set image.tag=${imageTag} \
                           --set service.type=${serviceType} \
                           ${nodePortFlag}
                     """

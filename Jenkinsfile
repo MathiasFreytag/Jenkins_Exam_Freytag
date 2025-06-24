@@ -50,10 +50,10 @@ pipeline {
         stage('Deploy to prod (if master)') {
             steps {
                 script {
-                    def branch = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
-                    echo "Detected Git branch: ${branch}"
+                    def branch = env.GIT_BRANCH
+                    echo "Detected Jenkins branch: ${branch}"
 
-                    if (branch == 'master' || branch == 'origin/master') {
+                    if (branch?.contains('master')) {
                         input message: 'Deploy to production?', ok: 'Yes, deploy'
                         deployToEnv('prod')()
                     } else {

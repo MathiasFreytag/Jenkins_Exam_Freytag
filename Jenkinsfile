@@ -18,11 +18,11 @@ pipeline {
                 script {
                     def services = ['cast-service', 'movie-service']
                     for (svc in services) {
-                        def image = "docker.io/${DOCKER_HUB_USR}/${svc}:latest"
+                        def image = "docker.io/${DOCKER_HUB_USR}/${svc}"
                         sh """
                             echo "Building ${svc}..."
-                            docker build -t ${image} ./${svc}
-                            docker push ${image}
+                            docker build -t ${image}:latest ./${svc}
+                            docker push ${image}:latest
                         """
                     }
                 }

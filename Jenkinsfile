@@ -86,7 +86,7 @@ def deployToEnv(envName, serviceType) {
                 '''
 
                 for (svc in services) {
-                    def image = "docker.io/${DOCKER_HUB_USR}/${svc}:latest"
+                    def imageRepo = "docker.io/${DOCKER_HUB_USR}/${svc}"
                     def chartPath = "./charts"
                     def nodePortFlag = serviceType == "NodePort" ? "--set service.nodePort=${nodePorts[svc]}" : ""
 
@@ -96,7 +96,7 @@ def deployToEnv(envName, serviceType) {
                         helm upgrade --install ${svc} ${chartPath} \
                           --namespace ${envName} \
                           --create-namespace \
-                          --set image.repository=${image} \
+                          --set image.repository=${imageRepo} \
                           --set image.tag=latest \
                           --set service.type=${serviceType} \
                           ${nodePortFlag}

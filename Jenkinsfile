@@ -47,25 +47,17 @@ pipeline {
             }
         }
 
-        stage('Manual Approval for Prod') {
-            when {
-                expression {
-			return env.BRANCH_NAME?.contains('master')
-		}
-            }
+        stage('Deploy to prod (if master)') {
             steps {
-                input message: 'Deploy to production?', ok: 'Yes, deploy'
-            }
-        }
-
-        stage('Deploy to prod') {
-            when {
-                expression {
-			return env.BRANCH_NAME?.contains('master')
-		}
-            }
-            steps {
-                deployToEnv('prod')
+                script {
+                    echo "Detected branch: ${env.BRANCH_NAME}"
+                    if (env.BRANCH_NAME?.contains('master')) {
+                        input message: 'Deploy to production?', ok: 'Yes, deploy'
+                        deployToEnv('prod')()
+                    } else {
+                        echo "Skipping production deployment – not on master branch."
+                    }
+                }
             }
         }
     }
@@ -76,7 +68,6 @@ def deployToEnv(envName) {
         script {
             def services = ['cast-service', 'movie-service']
 
-            // Verwende File-Credential
             sh '''
                 mkdir -p ~/.kube
                 cp "$KUBECONFIG_FILE" ~/.kube/config

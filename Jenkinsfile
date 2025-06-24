@@ -31,25 +31,19 @@ pipeline {
 
         stage('Deploy to dev') {
             steps {
-                script {
-                    deployToEnv('dev', 'ClusterIP')()
-                }
+                deployToEnv('dev', 'ClusterIP')
             }
         }
 
         stage('Deploy to qa') {
             steps {
-                script {
-                    deployToEnv('qa', 'ClusterIP')()
-                }
+                deployToEnv('qa', 'ClusterIP')
             }
         }
 
         stage('Deploy to staging') {
             steps {
-                script {
-                    deployToEnv('staging', 'ClusterIP')()
-                }
+                deployToEnv('staging', 'ClusterIP')
             }
         }
 
@@ -72,9 +66,7 @@ pipeline {
                 }
             }
             steps {
-                script {
-                    deployToEnv('prod', 'NodePort')()
-                }
+                deployToEnv('prod', 'NodePort')
             }
         }
     }
@@ -86,12 +78,12 @@ def deployToEnv(envName, serviceType) {
             script {
                 def services = ['cast-service', 'movie-service']
                 def nodePorts = ['cast-service': 30007, 'movie-service': 30008]
+                def kubeconfigPath = "${env.WORKSPACE}/kubeconfig.yaml"
 
-                sh '''
-                    mkdir -p /var/lib/jenkins/.kube
-                    cp "$KUBECONFIG_FILE" /var/lib/jenkins/.kube/config
-                    export KUBECONFIG=/var/lib/jenkins/.kube/config
-                '''
+                sh """
+                    cp "$KUBECONFIG_FILE" "${kubeconfigPath}"
+                    export KUBECONFIG="${kubeconfigPath}"
+                """
 
                 for (svc in services) {
                     def imageRepo = "docker.io/${DOCKER_HUB_USR}/${svc}"
@@ -100,7 +92,7 @@ def deployToEnv(envName, serviceType) {
 
                     sh """
                         echo "Deploying ${svc} to ${envName}..."
-                        export KUBECONFIG=/var/lib/jenkins/.kube/config
+                        export KUBECONFIG="${kubeconfigPath}"
                         helm upgrade --install ${svc} ${chartPath} \
                           --namespace ${envName} \
                           --create-namespace \

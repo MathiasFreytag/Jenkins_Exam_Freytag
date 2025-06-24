@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB = credentials('dockerhub-credentials') // liefert: DOCKER_HUB_USR + DOCKER_HUB_PSW
-        KUBECONFIG_FILE = credentials('config')           // Kubeconfig als Datei
+        DOCKER_HUB = credentials('dockerhub-credentials')
+        KUBECONFIG_FILE = credentials('config')
     }
 
     stages {
@@ -50,9 +50,8 @@ pipeline {
         stage('Manual Approval') {
             when {
                 expression {
-                    def branch = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
-                    echo "Detected Git branch: ${branch}"
-                    return branch == 'master' || branch == 'origin/master'
+                    echo "Detected GIT_BRANCH: ${env.GIT_BRANCH}"
+                    return env.GIT_BRANCH == 'origin/master'
                 }
             }
             steps {
@@ -63,8 +62,7 @@ pipeline {
         stage('Deploy to prod') {
             when {
                 expression {
-                    def branch = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
-                    return branch == 'master' || branch == 'origin/master'
+                    return env.GIT_BRANCH == 'origin/master'
                 }
             }
             steps {

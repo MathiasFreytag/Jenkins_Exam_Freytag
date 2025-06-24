@@ -50,8 +50,10 @@ pipeline {
         stage('Deploy to prod (if master)') {
             steps {
                 script {
-                    echo "Detected branch: ${env.BRANCH_NAME}"
-                    if (env.BRANCH_NAME?.contains('master')) {
+                    def branch = sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
+                    echo "Detected Git branch: ${branch}"
+
+                    if (branch == 'master' || branch == 'origin/master') {
                         input message: 'Deploy to production?', ok: 'Yes, deploy'
                         deployToEnv('prod')()
                     } else {

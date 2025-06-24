@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKER_HUB = credentials('dockerhub-credentials') // erzeugt: DOCKER_HUB_USR + DOCKER_HUB_PSW
-        KUBECONFIG_FILE = credentials('kubeconfig-file')  // Kubernetes config als Datei
+        KUBECONFIG_FILE = credentials('config')  // Kubernetes config als Datei
     }
 
     stages {

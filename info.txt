@@ -1,0 +1,7 @@
+Creator:	Mathias Freytag
+
+Link to Jenkins:	http://91.99.82.242:8080/job/devops-exam-Freytag/
+
+Link to Dockerhub:	https://hub.docker.com/repositories/mathiasfreytag
+
+Link to Github:		https://github.com/MathiasFreytag/Jenkins_Exam_Freytag.git
